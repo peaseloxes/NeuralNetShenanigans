@@ -32,10 +32,10 @@ public class DataPreProcessor {
      */
     public final void process(final String inputFileName, final String outputFileName) {
         // load
-        List<String> lines = IOUtil.readLines(inputFileName);
+        List<String> lines = IOUtil.readLinesFromClasspath(inputFileName);
         // clean
         lines = cleaningStrategy.scrub(lines);
         // save
-        IOUtil.writeLines(outputFileName, lines);
+        IOUtil.writeLinesToClasspath(outputFileName, lines);
     }
 }

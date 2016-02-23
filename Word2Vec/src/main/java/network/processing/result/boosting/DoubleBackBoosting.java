@@ -1,8 +1,8 @@
-package network.processing.result;
+package network.processing.result.boosting;
 
-import java.util.Map;
 import network.abs.Network;
-import network.wordvec.NetworkResult;
+import network.processing.result.NetworkResult;
+import network.processing.result.NetworkResultItem;
 
 /**
  * Boosts terms based on their occurrence position in the result queries.
@@ -23,13 +23,13 @@ public class DoubleBackBoosting implements BoostingStrategy {
     }
 
     @Override
-    public NetworkResult determineBoost(final NetworkResult term, final String[] result) {
+    public NetworkResultItem determineBoost(final NetworkResultItem term, final String[] result) {
         for (String subResult : result) {
             assert network != null;
-            Map<String, Double> subSuggestion = network.suggestionsForNoBoost(subResult);
+            NetworkResult subSuggestion = network.suggestionsForNoBoost(subResult);
             int boost = subSuggestion.size();
-            for (Map.Entry<String, Double> stringDoubleEntry : subSuggestion.entrySet()) {
-                if(stringDoubleEntry.getKey().equals(term.getTerm())) {
+            for (NetworkResultItem item : subSuggestion.getResultItems()) {
+                if(item.getTerm().equals(term.getTerm())) {
                     term.addBoost(boost);
                 }
                 boost--;

@@ -3,11 +3,13 @@ package network.wordvec;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Collection;
+import java.util.List;
 import network.abs.Network;
 import network.processing.preparation.DataPreProcessor;
-import network.processing.result.DoubleBackBoosting;
+import network.processing.result.NetworkResult;
+import network.processing.result.NetworkResultItem;
+import network.processing.result.boosting.DoubleBackBoosting;
 import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
 import org.deeplearning4j.models.embeddings.wordvectors.WordVectors;
 import org.deeplearning4j.models.word2vec.Word2Vec;
@@ -38,8 +40,19 @@ public class WordVecNetwork extends Network {
     public void load(final String fileName) {
         LOGGER.info("Loading: " + fileName);
         try {
-            word2Vec = WordVectorSerializer.loadTxtVectors(new File(IOUtil.getFullPath(fileName)));
+            word2Vec = WordVectorSerializer.loadTxtVectors(new File(IOUtil.getFullPathFromClasspath(fileName)));
         } catch (FileNotFoundException e) {
+            LOGGER.error("Could not load the model from file.", e);
+        }
+        LOGGER.info("Loaded model.");
+    }
+
+    @Override
+    public void loadBinary(final String outputFileName) {
+        LOGGER.info("Loading: " + outputFileName);
+        try {
+            word2Vec = WordVectorSerializer.loadGoogleModel(new File(IOUtil.getFullPathFromClasspath(outputFileName)), true);
+        } catch (IOException e) {
             LOGGER.error("Could not load the model from file.", e);
         }
         LOGGER.info("Loaded model.");
@@ -55,7 +68,7 @@ public class WordVecNetwork extends Network {
         LOGGER.info("Creating model as: " + dataFileName);
 
         // TODO hide behind abstraction
-        SentenceIterator iter = new LineSentenceIterator(new File(IOUtil.getFullPath(dataFileName)));
+        SentenceIterator iter = new LineSentenceIterator(new File(IOUtil.getFullPathFromClasspath(dataFileName)));
         iter.setPreProcessor((SentencePreProcessor) String::toLowerCase);
 
         final EndingPreProcessor preProcessor = new EndingPreProcessor();
@@ -67,20 +80,19 @@ public class WordVecNetwork extends Network {
             return base;
         });
 
-        final List<String> stopWords = IOUtil.readLines("model/stopwords.txt");
+        final List<String> stopWords = IOUtil.readLinesFromClasspath(getStopwordsFileName());
 
-        // TODO make settings variable
         Word2Vec word2Vec = new Word2Vec.Builder()
-                .batchSize(500) //# words per minibatch.
-                .minWordFrequency(10) //
+                .batchSize(getBatchSize()) //# words per minibatch.
+                .minWordFrequency(getMinWordOccurrence()) //
                 .useAdaGrad(false) //
-                .layerSize(300) // word feature vector size
-                .iterations(1) // # iterations to train
-                .epochs(1)
+                .layerSize(getNumVectors()) // word feature vector size
+                .iterations(getIterations()) // # iterations to train
+                .epochs(getEpochs())
                 .stopWords(stopWords)
-                .learningRate(0.025) //
-                .minLearningRate(1e-3) // learning rate decays wrt # words. floor learning
-                .negativeSample(10) // sample size 10 words
+                .learningRate(getLearningRate()) //
+                .minLearningRate(getMinLearningRate()) // learning rate decays wrt # words. floor learning
+                .negativeSample(getNegativeSample()) // sample size 10 words
                 .iterate(iter) //
                 .tokenizerFactory(tokenizer)
                 .build();
@@ -88,7 +100,7 @@ public class WordVecNetwork extends Network {
         word2Vec.fit();
         LOGGER.info("Saving model as: " + saveFileName);
         try {
-            WordVectorSerializer.writeWordVectors(word2Vec, IOUtil.getFullPath(saveFileName));
+            WordVectorSerializer.writeWordVectors(word2Vec, IOUtil.getFullPathFromClasspath(saveFileName));
         } catch (IOException e) {
             LOGGER.error("Could not write the model to file.", e);
         }
@@ -103,34 +115,31 @@ public class WordVecNetwork extends Network {
     }
 
     @Override
-    public Map<String, Double> suggestionsFor(final String term) {
+    public NetworkResult suggestionsFor(final String term) {
         if (word2Vec == null) {
             throw new IllegalStateException("No network available. Please use load() to load a network model.");
         }
-        Map<String, Double> responseMap = new LinkedHashMap<>();
-        List<NetworkResult> result = new ArrayList<>();
+        NetworkResult result = new NetworkResult();
         Collection<String> responses = word2Vec.wordsNearest(term, 10);
         for (final String response : responses) {
-            NetworkResult networkResult = new NetworkResult(response, 0, word2Vec.similarity(term, response));
-            getBoostingStrategy().determineBoost(networkResult, responses.toArray(new String[]{}));
-            result.add(networkResult);
+            NetworkResultItem networkResultItem = new NetworkResultItem(response, 0, word2Vec.similarity(term, response));
+            getBoostingStrategy().determineBoost(networkResultItem, responses.toArray(new String[]{}));
+            result.add(networkResultItem);
         }
-        result.parallelStream()
-                .sorted(Comparator.comparing(NetworkResult::getBoost).reversed())
-                .forEachOrdered(r -> responseMap.put(r.getTerm(), r.getBoost()));
-        return responseMap;
+        return result;
     }
 
     @Override
-    public Map<String, Double> suggestionsForNoBoost(final String term) {
+    public NetworkResult suggestionsForNoBoost(final String term) {
         if (word2Vec == null) {
             throw new IllegalStateException("No network available. Please use load() to load a network model.");
         }
-        Map<String, Double> responseMap = new LinkedHashMap<>();
-        List<NetworkResult> result = word2Vec.wordsNearest(term, 10).stream().map(response -> new NetworkResult(response, 0, word2Vec.similarity(term, response))).collect(Collectors.toList());
-        result.parallelStream()
-                .sorted(Comparator.comparing(NetworkResult::getBoost).reversed())
-                .forEachOrdered(r -> responseMap.put(r.getTerm(), r.getBoost()));
-        return responseMap;
+        NetworkResult result = new NetworkResult();
+        Collection<String> responses = word2Vec.wordsNearest(term, 10);
+        for (final String response : responses) {
+            NetworkResultItem networkResultItem = new NetworkResultItem(response, 0, word2Vec.similarity(term, response));
+            result.add(networkResultItem);
+        }
+        return result;
     }
 }

@@ -20,7 +20,7 @@ public enum IOUtil {
      * @param fileNameOnClassPath the file name on class path.
      * @return the full path.
      */
-    public static String getFullPath(final String fileNameOnClassPath) {
+    public static String getFullPathFromClasspath(final String fileNameOnClassPath) {
         ClassLoader classLoader = IOUtil.class.getClassLoader();
         URL url = classLoader.getResource(fileNameOnClassPath);
         if (url != null) {
@@ -36,10 +36,10 @@ public enum IOUtil {
      * @param fileName the file name to read
      * @return a list of lines, can be empty if the file contains no lines.
      */
-    public static List<String> readLines(final String fileName) {
+    public static List<String> readLinesFromClasspath(final String fileName) {
         List<String> lines;
         try {
-            lines = Files.readAllLines(Paths.get(getFullPath(fileName)), Charset.forName("ISO-8859-1"));
+            lines = Files.readAllLines(Paths.get(getFullPathFromClasspath(fileName)), Charset.forName("ISO-8859-1"));
         } catch (IOException e) {
             throw new IllegalArgumentException("Invalid filename, file could not be found.");
         }
@@ -52,12 +52,11 @@ public enum IOUtil {
      * @param fileName the file's name.
      * @param lines    the lines to write.
      */
-    public static void writeLines(final String fileName, final List<String> lines) {
+    public static String writeLinesToClasspath(final String fileName, final List<String> lines) {
         try {
-            Files.write(Paths.get(getFullPath(fileName)), lines);
+            return Files.write(Paths.get(getFullPathFromClasspath(fileName)), lines).toString();
         } catch (IOException e) {
             throw new IllegalArgumentException("Error writing file: " + fileName);
         }
     }
-
 }

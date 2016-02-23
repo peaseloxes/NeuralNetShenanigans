@@ -130,6 +130,7 @@ public enum StringUtil {
         return splitLines;
     }
 
+    // TODO this does not work correctly, buffer is deleted after each delimiter
     /**
      * Splits a line on all delimiters except if it's part of the exceptions.
      *
