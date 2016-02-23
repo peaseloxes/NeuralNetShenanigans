@@ -29,6 +29,7 @@ buildNumber.properties
 
 ## Directory-based project format:
 .idea/
+
 # if you remove the above rule, at least ignore the following:
 
 # User-specific stuff:
@@ -76,3 +77,4 @@ java.hprof.txt
 model.txt
 input.txt
 knowledge-vectors-skipgram1000.bin
+/word2vec-index
