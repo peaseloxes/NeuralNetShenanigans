@@ -1,5 +1,6 @@
 package network.processing.preparation.strategies;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang.text.StrBuilder;
@@ -17,6 +18,8 @@ public class BasicCleaning implements CleaningStrategy {
     private static final String[] LINE_ENDINGS = new String[]{".", "?", "!", ".\"", ".\'", "?\"", "?\'", "!\"", "!\'"};
 
     private static final Logger LOGGER = LogManager.getLogger(BasicCleaning.class.getName());
+
+    private static final int UPDATE_INTERVAL = 10000;
 
     @Override
     public List<String> scrub(final List<String> input) {
@@ -36,6 +39,8 @@ public class BasicCleaning implements CleaningStrategy {
     protected List<String> reformatLines(final List<String> input) {
         final List<String> cleanedLines = new ArrayList<>(input.size());
         StrBuilder buffer = new StrBuilder();
+        int intervalCounter = 0;
+        int processedCounter = 0;
         // for each line
         for (final String s : input) {
             // add a whitespace in case the lines are improperly stored
@@ -50,9 +55,15 @@ public class BasicCleaning implements CleaningStrategy {
                 buffer.clear();
                 splitLines.forEach(buffer::append);
             }
+            if (intervalCounter == UPDATE_INTERVAL) {
+                processedCounter += intervalCounter;
+                intervalCounter = 0;
+                System.out.println(LocalDateTime.now() + " > " + processedCounter + "/" + input.size()  + " lines rearranged.");
+            }
+            intervalCounter++;
         }
         // append remaining buffer
-        if(!"".equals(buffer.toString())) {
+        if (!"".equals(buffer.toString())) {
             cleanedLines.add(buffer.toString());
         }
         return cleanedLines;
@@ -60,6 +71,8 @@ public class BasicCleaning implements CleaningStrategy {
 
     private List<String> cleanUpText(final List<String> lines) {
         List<String> result = new ArrayList<>(lines.size());
+        int intervalCounter = 0;
+        int processedCounter = 0;
         for (final String line : lines) {
 
             // remove all non-letters
@@ -72,6 +85,12 @@ public class BasicCleaning implements CleaningStrategy {
             cleaned = cleaned.toLowerCase();
 
             result.add(cleaned);
+            if (intervalCounter == UPDATE_INTERVAL) {
+                processedCounter += intervalCounter;
+                intervalCounter = 0;
+                System.out.println(LocalDateTime.now() + " > " + processedCounter + "/" + lines.size() +" lines cleaned.");
+            }
+            intervalCounter++;
         }
         return result;
     }

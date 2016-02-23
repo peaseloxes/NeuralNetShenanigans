@@ -1,6 +1,7 @@
 package network.processing.preparation;
 
 import java.util.List;
+import lombok.Data;
 import network.processing.preparation.strategies.BasicCleaning;
 import network.processing.preparation.strategies.CleaningStrategy;
 import util.IOUtil;
@@ -10,6 +11,7 @@ import util.IOUtil;
  *
  * @author peaseloxes
  */
+@Data
 public class DataPreProcessor {
 
     private CleaningStrategy cleaningStrategy;

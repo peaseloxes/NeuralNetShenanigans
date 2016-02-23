@@ -13,9 +13,21 @@
         <module>Util</module>
     </modules>
 
+    <repositories>
+        <repository>
+            <id>snapshots-repo</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <releases><enabled>false</enabled></releases>
+            <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+    </repositories>
+
     <properties>
-        <nd4j.version>0.4-rc3.8</nd4j.version>
-        <dl4j.version>0.4-rc3.8</dl4j.version>
+        <!--The most recent stable version is significantly slower at query time-->
+        <!--<nd4j.version>0.4-rc3.8</nd4j.version>-->
+        <!--<dl4j.version>0.4-rc3.8</dl4j.version>-->
+        <dl4j.version>0.4-rc3.9-SNAPSHOT</dl4j.version>
+        <nd4j.version>0.4-rc3.9-SNAPSHOT</nd4j.version>
     </properties>
 
     <build>

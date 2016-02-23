@@ -4,8 +4,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 import network.abs.Network;
 import network.processing.preparation.DataPreProcessor;
+import network.processing.result.DoubleBackBoosting;
 import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
 import org.deeplearning4j.models.embeddings.wordvectors.WordVectors;
 import org.deeplearning4j.models.word2vec.Word2Vec;
@@ -29,6 +31,7 @@ public class WordVecNetwork extends Network {
      */
     public WordVecNetwork() {
         setDataPreProcessor(new DataPreProcessor());
+        setBoostingStrategy(new DoubleBackBoosting(this));
     }
 
     @Override
@@ -64,14 +67,17 @@ public class WordVecNetwork extends Network {
             return base;
         });
 
+        final List<String> stopWords = IOUtil.readLines("model/stopwords.txt");
+
         // TODO make settings variable
         Word2Vec word2Vec = new Word2Vec.Builder()
-                .batchSize(5) //# words per minibatch.
-                .minWordFrequency(5) //
+                .batchSize(500) //# words per minibatch.
+                .minWordFrequency(10) //
                 .useAdaGrad(false) //
-                .layerSize(150) // word feature vector size
+                .layerSize(300) // word feature vector size
                 .iterations(1) // # iterations to train
                 .epochs(1)
+                .stopWords(stopWords)
                 .learningRate(0.025) //
                 .minLearningRate(1e-3) // learning rate decays wrt # words. floor learning
                 .negativeSample(10) // sample size 10 words
@@ -102,14 +108,28 @@ public class WordVecNetwork extends Network {
             throw new IllegalStateException("No network available. Please use load() to load a network model.");
         }
         Map<String, Double> responseMap = new LinkedHashMap<>();
-        List<WordVecResult> result = new ArrayList<>();
-        // TODO proper boosting implementation
-        double boost = 0;
-        for (final String response : word2Vec.wordsNearest(term, 10)) {
-            result.add(new WordVecResult(response, boost++, word2Vec.similarity(term, response)));
+        List<NetworkResult> result = new ArrayList<>();
+        Collection<String> responses = word2Vec.wordsNearest(term, 10);
+        for (final String response : responses) {
+            NetworkResult networkResult = new NetworkResult(response, 0, word2Vec.similarity(term, response));
+            getBoostingStrategy().determineBoost(networkResult, responses.toArray(new String[]{}));
+            result.add(networkResult);
         }
         result.parallelStream()
-                .sorted(Comparator.comparing(WordVecResult::getBoost).reversed())
+                .sorted(Comparator.comparing(NetworkResult::getBoost).reversed())
+                .forEachOrdered(r -> responseMap.put(r.getTerm(), r.getBoost()));
+        return responseMap;
+    }
+
+    @Override
+    public Map<String, Double> suggestionsForNoBoost(final String term) {
+        if (word2Vec == null) {
+            throw new IllegalStateException("No network available. Please use load() to load a network model.");
+        }
+        Map<String, Double> responseMap = new LinkedHashMap<>();
+        List<NetworkResult> result = word2Vec.wordsNearest(term, 10).stream().map(response -> new NetworkResult(response, 0, word2Vec.similarity(term, response))).collect(Collectors.toList());
+        result.parallelStream()
+                .sorted(Comparator.comparing(NetworkResult::getBoost).reversed())
                 .forEachOrdered(r -> responseMap.put(r.getTerm(), r.getBoost()));
         return responseMap;
     }

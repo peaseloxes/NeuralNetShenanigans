@@ -10,8 +10,12 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class WordVecResult {
+public class NetworkResult {
     private String term;
     private double boost;
     private double similarity;
+
+    public void addBoost(final int boost) {
+        this.boost += boost;
+    }
 }

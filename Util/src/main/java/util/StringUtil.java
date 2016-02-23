@@ -151,7 +151,6 @@ public enum StringUtil {
                     buffer.append("\\n");
                 }
             }
-            words = buffer.toString().split(" ");
         }
         // all your backslash are belong to us
         return Arrays.asList(buffer.toString().split("\\\\n"));

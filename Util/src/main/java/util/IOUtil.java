@@ -3,6 +3,7 @@ package util;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -38,7 +39,7 @@ public enum IOUtil {
     public static List<String> readLines(final String fileName) {
         List<String> lines;
         try {
-            lines = Files.readAllLines(Paths.get(getFullPath(fileName)));
+            lines = Files.readAllLines(Paths.get(getFullPath(fileName)), Charset.forName("ISO-8859-1"));
         } catch (IOException e) {
             throw new IllegalArgumentException("Invalid filename, file could not be found.");
         }

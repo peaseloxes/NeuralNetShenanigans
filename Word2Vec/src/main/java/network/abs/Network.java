@@ -5,6 +5,7 @@ import lombok.Data;
 import network.processing.abs.LinePreProcessor;
 import network.processing.abs.WordPreProcessor;
 import network.processing.preparation.DataPreProcessor;
+import network.processing.result.BoostingStrategy;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -14,6 +15,7 @@ import org.apache.log4j.Logger;
 @Data
 public abstract class Network {
 
+    private BoostingStrategy boostingStrategy;
     private DataPreProcessor dataPreProcessor;
     private LinePreProcessor linePreProcessor;
     private WordPreProcessor wordPreProcessor;
@@ -58,4 +60,5 @@ public abstract class Network {
      */
     public abstract Map<String, Double> suggestionsFor(final String term);
 
+    public abstract Map<String, Double> suggestionsForNoBoost(String term);
 }
