@@ -1,5 +1,6 @@
 package kmeans;
 
+import java.util.ArrayList;
 import java.util.List;
 import lombok.Data;
 
@@ -8,5 +9,5 @@ import lombok.Data;
  */
 @Data
 public class Documents {
-    List<Document> documentList;
+    List<Document> documentList = new ArrayList<>();
 }

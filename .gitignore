@@ -57,6 +57,7 @@ buildNumber.properties
 
 ## Plugin-specific files:
 
+
 # IntelliJ
 /out/
 
@@ -78,3 +79,4 @@ model.txt
 input.txt
 knowledge-vectors-skipgram1000.bin
 /word2vec-index
+/Word2Vec/src/main/resources/raw_data/20news-18828
