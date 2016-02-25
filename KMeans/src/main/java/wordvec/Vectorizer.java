@@ -2,8 +2,8 @@ package wordvec;
 
 import java.util.Arrays;
 import java.util.List;
-import kmeans.Document;
-import kmeans.Documents;
+import kmeans.entities.Document;
+import kmeans.entities.Documents;
 import org.deeplearning4j.bagofwords.vectorizer.BagOfWordsVectorizer;
 import org.deeplearning4j.bagofwords.vectorizer.TextVectorizer;
 import org.deeplearning4j.text.tokenization.tokenizer.preprocessor.EndingPreProcessor;

@@ -1,114 +1,127 @@
 package kmeans.cluster;
 
-import java.util.*;
-import kmeans.Document;
-import kmeans.calc.Similarity;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import kmeans.entities.Document;
 
 /**
  * @author peaseloxes
  */
 public class KMeansClustering {
-    private int globalCounter;
+    private static final int MAX_RUNS = 11000;
+    private int totalCounter = 0;
+    private List<Centroid> oldCentroids = new ArrayList<>();
 
-    public List<Centroid> prepareCluster(final int numClusters, final List<Document> documents) {
-        globalCounter = 0;
-        List<Centroid> centroids = new ArrayList<>(numClusters);
-        Set<Integer> randomNumbers = new HashSet<>();
-        do {
-            randomNumbers.add(new Random().nextInt(documents.size()));
-        } while (randomNumbers.size() < numClusters);
-        assert centroids.size() == numClusters;
-        for (Integer randomNumber : randomNumbers) {
-            Centroid centroid = new Centroid();
-            centroid.getDocumentList().add(documents.get(randomNumber));
-            centroids.add(centroid);
-        }
-        boolean stop;
-        List<Centroid> result = initializeClusterCentroid(numClusters);
-        List<Centroid> prevResult = new ArrayList<>();
+    //    1. Randomly choose k items and make them as initial centroids.
+    //    2. For each point, find the nearest centroid and assign the point to the cluster associated with the nearest centroid.
+    //    3. Update the centroid of each cluster based on the items in that cluster. Typically, the new centroid will be the average of all points in the cluster.
+    //    4. Repeats steps 2 and 3, till no point switches clusters.
+    public List<Centroid> run(final List<Document> documents, final int numClusters) {
+        totalCounter = 0;
+        assert numClusters < documents.size();
 
-        do {
-            prevResult = centroids;
-            for (Document document : documents) {
-                int index = findClosestCentroid(centroids, document);
-                result.get(index).getDocumentList().add(document);
+        // 1. Randomly choose k items and make them as initial centroids.
+        List<Centroid> centroids = initializeCentroids(documents, numClusters);
+
+        boolean stop = false;
+        while (!stop) {
+
+            // 2. For each point,
+            for (Centroid centroid : centroids) {
+                centroid.clearDocuments();
+                for (Document document : documents) {
+                    // find the nearest centroid and assign the point to the cluster associated with the nearest centroid.
+                    if (centroid == nearestCentroid(document, centroids)) {
+                        centroid.addDocument(document);
+                    }
+                }
+
             }
-            centroids = initializeClusterCentroid(numClusters);
-            centroids = calculateMeanPoints(result);
-            stop = checkStopConditions(prevResult, centroids);
-        } while (!stop);
-        globalCounter++;
-        return result;
+
+            // 3. Update the centroid of each cluster based on the items in that cluster. Typically, the new centroid will be the average of all points in the cluster.
+            for (Centroid centroid : centroids) {
+                Centroid updatedCentroid = updateCentroid(centroid);
+                assert updatedCentroid != null;
+                centroid.setVector(updatedCentroid.getVector());
+            }
+            // update globals
+            totalCounter++;
+            oldCentroids = centroids;
+
+            // 4. Repeats steps 2 and 3, till no point switches clusters.
+            stop = areWeThereYet(centroids);
+        }
+
+        return centroids;
     }
 
-    private boolean checkStopConditions(final List<Centroid> prevResult, final List<Centroid> centroids) {
-        globalCounter++;
-        if (globalCounter > 11000) {
+    private Centroid updateCentroid(final Centroid centroid) {
+        if (!centroid.hasDocuments()) {
+            return centroid;
+        }
+        int dimensionSize = centroid.getDocumentList().get(0).getVector().length;
+        double[] newVector = new double[dimensionSize];
+
+        for (Document document : centroid.getDocumentList()) {
+            double[] docVector = document.getVector();
+            for (int i = 0; i < dimensionSize; i++) {
+                newVector[i] += docVector[i];
+            }
+        }
+        for (int i = 0; i < newVector.length; i++) {
+            newVector[i] = newVector[i] / centroid.getDocAmount();
+        }
+        centroid.setVector(newVector);
+        return centroid;
+    }
+
+    private Centroid nearestCentroid(final Document document, final List<Centroid> centroids) {
+        double minDistance = Double.POSITIVE_INFINITY;
+        Centroid closestCentroid = null;
+        for (Centroid centroid : centroids) {
+            double distance = distance(centroid.getVector(), document.getVector());
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestCentroid = centroid;
+            }
+        }
+        return closestCentroid;
+    }
+
+    private boolean areWeThereYet(final List<Centroid> centroids) {
+        if (totalCounter > MAX_RUNS) {
             return true;
         }
-        boolean stop = false;
-        int[] changeIndex = new int[centroids.size()];
-        int index = 0;
-        do {
-            int count = 0;
-            if (centroids.get(index).getDocumentList().size() == 0 && prevResult.get(index).getDocumentList().size() == 0) {
-                index++;
-            } else if (centroids.get(index).getDocumentList().size() != 0 && prevResult.get(index).getDocumentList().size() != 0) {
-                for (int i = 0; i < centroids.get(index).getDocumentList().get(0).getVectorSpace().length; i++) {
-                    if (centroids.get(index).getDocumentList().get(0).getVectorSpace()[i] == prevResult.get(index).getDocumentList().get(0).getVectorSpace()[i]) {
-                        count++;
-                    }
+        assert oldCentroids.size() == centroids.size();
+        for (Centroid oldCentroid : oldCentroids) {
+            for (Centroid centroid : centroids) {
+                if ( Arrays.equals(oldCentroid.getVector(), centroid.getVector())) {
+                   return false;
                 }
-                if (count == centroids.get(index).getDocumentList().get(0).getVectorSpace().length) {
-                    changeIndex[index] = 0;
-                } else {
-                    changeIndex[index] = 1;
-                }
-                index++;
-            } else {
-                index++;
             }
-        } while (index < centroids.size());
-        return !Arrays.asList(changeIndex).contains(1);
+        }
+        return true;
     }
 
-    private List<Centroid> calculateMeanPoints(final List<Centroid> centroids) {
-        for (Centroid centroid : centroids) {
-            if (centroid.getDocumentList().size() > 0) {
-                for (int i = 0; i < centroid.getDocumentList().get(0).getVectorSpace().length; i++) {
-                    double total = 0;
-                    for (Document document : centroid.getDocumentList()) {
-                        total += document.getVectorSpace()[i];
-                    }
-                    centroid.getDocumentList().get(0).getVectorSpace()[i] = total / centroid.getDocumentList().size();
-                }
-            }
+    private List<Centroid> initializeCentroids(final List<Document> documents, final int numClusters) {
+        // just pick first documents
+        List<Centroid> centroids = new ArrayList<>(numClusters);
+        for (int i = 0; i < numClusters; i++) {
+            centroids.add(new Centroid(documents.get(i).getVector()));
         }
         return centroids;
     }
 
-    private int findClosestCentroid(final List<Centroid> centroids, final Document document) {
-        Double[] similarityCluster = new Double[centroids.size()];
-        for (int i = 0; i < centroids.size(); i++) {
-            similarityCluster[i] = Similarity.calc(centroids.get(i).getDocumentList().get(0), document);
-        }
-        int index = 0;
-        double max = similarityCluster[0];
-        for (int i = 0; i < similarityCluster.length; i++) {
-            if (similarityCluster[i] > max) {
-                max = similarityCluster[i];
-                index = i;
-            }
-        }
-        return index;
-    }
+//    private double distance(final Document x, final Document y) {
+//        return distance(x.getVector(), y.getVector());
+//    }
 
-    private List<Centroid> initializeClusterCentroid(final int size) {
-        List<Centroid> newList = new ArrayList<>();
-        for (int i = 0; i < size; i++) {
-            Centroid centroid = new Centroid();
-            newList.add(centroid);
+    private double distance(double[] x, double[] y) {
+        double sumXY2 = 0.0;
+        for (int i = 0, n = x.length; i < n; i++) {
+            sumXY2 += Math.pow(x[i] - y[i], 2);
         }
-        return newList;
+        return Math.sqrt(sumXY2);
     }
 }
